@@ -1,0 +1,237 @@
+ntroduction:
+================
+K8s developed by Google
+Free and open source
+Container orchestration platform 
+	- maintains pods
+	- high availability of the services with replicas
+	- auto scaling
+	- self healing capability
+
+Kubernetes provides an additional layer on top of the container called pod. 
+
+GKE(Google kubernetes)
+
+Architecture:
+==============
+Kubernetes depends on containerization platform
+Kubernetes cluster - Collection of nodes
+Cluster contains two types of nodes - masternode(brain of the cluster) and worker node (actual mirocrservice node)
+We can have multiple master nodes for high availability. But usually high availability of master node is taken care by cloud service provider(Google, Amazon, Azure)
+components in master node/control plane -
+	API server - gateway of Kubernetes control plane, exposes the kubernetes API, also handles authorization and authentication
+	Scheduer - Connects with etcd database and get info (capacity, load, etc) about all the worker nodes. 
+			Based on the info it selects a node for newly created pod to run(schedule pods to run on node)
+	controller manager - Manages all the controllers(pods controllers,service controllers etc)
+	etcd database - all cluster data in the form of key value
+	These componenets communicate each other
+Componenets of worker node
+	Kubelete - sends info of node such as health, capacity, load etc., to master node 
+	kube proxy - communication optimizer - Helps to communicate with other pods by selecting nearest path when multiple copies of pods runs in different nodes
+	container platform - docker or any containerization tool
+worker nodes handles workloads
+workload meaning the actual applications which serves
+
+workload components
+--------------------
+	pods - collection of containers represents as one single pod
+	deployments - We use deployments to create multiple replicas of pod
+	services - 
+	ingress
+	configmap - to store configuration
+	secrets - to store credentials
+	namespaces - logical partitioning technique
+	persisteantVolumes - for storage
+	persistent volume claims - for storage
+	statefulsets - to setup database containers
+	daemonsets
+	jobs
+	etc.,
+
+POD
+=====
+Pod encapsulates one or more containers.
+Generally contains one main container which provides actual service. The other container then called as helper container or sidecar container
+
+apiVersion: v1 #Kubernetes version we are using to apply
+kind: Pod #what kind of pod it is
+metadata: #metadata about pod
+  name: my-pod 
+spec: #conainer specification
+  containers:
+  - name: my-container #Name of the container
+    image: nginx:latest #container/docker image
+    ports:
+    - containerPort: 8080 #Container port runs on
+	
+Deployments:
+============
+A higher level abstraction of Pod
+Provides set of replica pods
+You can specify no. of replicas and other configuration parameters
+Internally uses Replicaset
+
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: my-deployment
+spec: #Pod specification
+  replicas: 4 # How many replicas should run 
+  selector: 
+    matchLabels:
+      app: my-app #Name to recognize all replicas. All 4 replicas identified by this name
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec: #container specification
+      containers:
+      - name: my-container
+        image: nginx:latest
+        ports:
+        - containerPort: 8080
+
+Replicaset :
+===========
+A higher level abstraction of Pod
+Provides set of replica pods
+Replicaset sample yml is same as Deployment. where we specify kind as ReplicaSet
+
+
+commands:
+---------
+kubectl get pods
+kubectl get deployments or kubectl get deploy
+kubectl get replicasets
+kubectl apply -f <file path+/name or url>
+kubectl delete -f <file path+/name or url>
+kubectl describe pod <podname>
+kubectl get nodes  #Gives worker nodes info
+kubectl describe deploy <deployment-name>
+kubectl describe replicaset <replicaset name>
+kubectl edit deployment <deployment-name>
+kubectl delete pod <pod-name>
+kubectl get pods -w
+kubectl get pods -o wide
+kubectl delete -f .
+
+Service:
+========
+Abstraction of deployment/replicaset/set of pods
+Pod or deployment does not have permanent IP, meaning when pod is down and up, the IP address updates
+So to resolve the IP problem we have Service.It binds with consistant IP address and forwards the requests to the pod.
+In other words, it acts as a stable network endpoint for accessing the pod, enabling interpod communication & load balancing
+Types:
+------
+	ClusterIP: Default type and accessible within the cluster only. so secured
+	NodePort: (worker node IP + Port of the service). Exposes the service on Public IP. Use for development and testing purpose. 
+			Port here always above 30000
+	LoadBalancer: External clients can access the service using public IP address. We use certificates for security
+			We connect ClusterIP services using LoadBalancer service in real time
+	External name: Maps the service to DNS name, Allowing the service to redirect requests to external endpoint outside the cluster
+	
+For service, we should have the same label as the pod/deployment/replicaset label in manifest file. Why because when service gets request, it searches for the same labelled pod to forward or redirect the request
+
+https://github.com/nextopsvideos/kubernetesyt/ to get all the manifest files
+
+commands
+--------
+kubectl get service
+kubectl get svc
+kubectl describe svc <service-name>
+	We can see the endpoints of node IP address here that mapped to this cluster
+
+
+How the Pod communication happens in Kubernetes?
+	DNS based service discovery: K8s provides a built-in DNS service called CoreDNS, which maps the DNS name to the Pod's IP address
+	Each pod is automatically assigned a DNS name based on its metadata
+	This DNS name can be used by other pods or services to discover and communicate with the pod
+	
+Ingress
+========
+It is an API object that provides external access to services within a cluster
+It acts as a layer 7 load balancer	
+Layer 7 means we don't create multiple load balancer services to route traffic to the required micro service. We have only one LoadBalancer to route
+This loadbalance(layer 7) is different from load balancer service(layer 4)
+Like a API gateway
+Users -----> Ingress ----> service
+nginx ingress controller is the most famous in the market
+
+Ingress controller
+------------------
+It is a component that manages and operates ingress resource
+Ingress resource
+----------------
+It is an API object that defines rules for routing external http or https traffic to services within the cluster
+
+
+To deploy ingress controller, nginx ingress maintaining one github yml file. We can apply it
+To create nginx ingress controller in google kubernetes cluster, we should create a namespace.
+To deploy ingress resource, we need nginx controller
+
+commands
+--------
+kubectl create namespace <namespace name>
+kubectl get ingress -n <namespace>
+kubectl describe ingress <ingress name>
+
+Configmaps
+==========
+This is an API object used to store configuration data that can be consumed by pods or other resources in the cluster
+It provides a way to decouple configuration settings from the containerized applications
+
+secrets
+=======
+Store sensitive information such as credentials, tokens, certificates etc
+Types
+-----
+Opaque - key value pair as base 64 encoded strings
+docker registry - Used for storing credentials to authenticate with a private docker registry
+TLS - TLS certificates(tls.crt) and private keys (tls.key)
+Service Account - Automatically creates when a pod created. Allows pods to authenticate with the API server in master node. This is not to explicitly create
+
+commands
+--------
+kubectl get configmap
+kubectl describe cm <config map name>
+kubectl get secret
+kubectl describe secret <secret name>
+kubectl exec <podname> env #Shows you the environmental variables for that pod 
+
+namespaces
+==========
+They provide a way to divide cluster resources into logical groups.
+Actually we create namespaces for qa, dev, prod 
+Enables multiple teams or applications to coexist and operate independently within the same kubernetes cluster
+Isolation
+Resource allocation - Resources like CPU, Memory, storage and network bandwidth can be allocated and managed 
+Access control - Users, roles, permissions - RBAC (Role Based Access Control)
+Scopes
+------
+All these 4 scopes are created by default by Kubernetes cluster. Other than 'default' namespace, 3 used by Kubernetes cluster
+1.default - If we dont specify namespace while creating component(pod/deply/replicaset/etc), it creates under this default namespace
+2.kube-node-lease: 
+3.kube-public: Publicly readable and cluster wide resuorces 
+4.kube-system: System related object created by Kubernetes
+
+kubectl get all -n kube-system
+
+Persistent volumes (PVs)
+==================
+Piece of storage provisioned in a cluster that can be dynamically allocated and managed by admins
+Provides a way to decouple storage from the lifecycle of pods and allow dat to persist beyond the lifetime of individual pods
+
+Persistent volume claims (PVCs)
+=========================
+To create persistent volumes (PVs) we use PVCs
+
+kubectl get pvc
+kubectl get pv
+
+Statefulsets
+============
+To manage and deploy stateful applications such as databases (Mysql, Postgresql), messaging systems (kafka) and other applications that require stable network identities and persistent storage.
+Ordered, predictable deployment and scaling
+Order in creation: Suppose if we deploy statefulset with 3 replicaset then k8s create one pod first, if it is completely in running state then it creates second one and then 3rd.
+Order in deletion: If we update the manifest file with 2 replicate set and apply then it deletes the last one created.
+Stable network identity/Naming consistency - If one of the pod crashed then it creates a new pod with the same name
