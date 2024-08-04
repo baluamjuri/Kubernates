@@ -235,3 +235,11 @@ Ordered, predictable deployment and scaling
 Order in creation: Suppose if we deploy statefulset with 3 replicaset then k8s create one pod first, if it is completely in running state then it creates second one and then 3rd.
 Order in deletion: If we update the manifest file with 2 replicate set and apply then it deletes the last one created.
 Stable network identity/Naming consistency - If one of the pod crashed then it creates a new pod with the same name
+
+Real time experience with commands:
+===================================
+kubectl get pods -n c-qa4 | grep appName
+
+kubectl logs -n c-qa4 app-c-qa4-6b68547c7-d6qk5 | grep '74870482'
+
+stern -n c-qa4 myapp --tail=500
